@@ -7,8 +7,6 @@
 
 #include <ImGuiWindow.h>
 
-#include <Core/ProjectExport.h>
-
 #include <volk.h>
 #include <glfw/glfw3.h>
 
@@ -37,8 +35,6 @@ namespace Nightbird
 		
 		SceneObject* GetSelectedObject() const;
 		void SelectObject(SceneObject* object);
-
-		void SetObjectTypes(const std::vector<const CustomObjectDescriptor*>& objectTypes);
 		
 		void Render(VkCommandBuffer commandBuffer);
 		

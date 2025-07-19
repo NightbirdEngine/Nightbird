@@ -24,7 +24,12 @@ project "Engine"
 		"Vendor/glm",
 		"Vendor/stb",
 		"Vendor/fastgltf/include",
-		"Vendor/cereal"
+		"Vendor/rttr/src",
+		"Vendor/json"
 	}
 
 	links { "glfw", "fastgltf" }
+
+	filter { "system:windows" }
+		links { "rttr" }
+	filter {}

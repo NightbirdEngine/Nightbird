@@ -5,9 +5,6 @@
 #include <Core/SceneObject.h>
 #include <Core/Transform.h>
 
-#include <cereal/types/polymorphic.hpp>
-#include <cereal/archives/portable_binary.hpp>
-
 namespace Nightbird
 {
 	class VulkanDevice;
@@ -17,27 +14,20 @@ namespace Nightbird
 	class PrefabInstance : public SceneObject
 	{
 	public:
-		PrefabInstance() = default;
-		PrefabInstance(const std::string& name, const std::string& prefabPath);
-		~PrefabInstance();
+		using SceneObject::SceneObject;
+		PrefabInstance(const char* name, const char* prefabPath = "");
+		PrefabInstance(const std::string& name, const std::string& prefabPath = "");
+		~PrefabInstance() override;
 		
 		const std::string& GetPrefabPath() const;
 
-		template <class Archive>
-		void serialize(Archive& archive)
-		{
-			archive
-			(
-				CEREAL_NVP(name),
-				CEREAL_NVP(transform),
-				CEREAL_NVP(prefabPath)
-			);
-		}
+		void Serialize(json& out) const override;
+		void Deserialize(const json& in) override;
 
 	protected:
 		std::string prefabPath;
+		
+		RTTR_ENABLE(Nightbird::SceneObject)
+		RTTR_REGISTRATION_FRIEND
 	};
 }
-
-CEREAL_REGISTER_TYPE(Nightbird::PrefabInstance)
-CEREAL_REGISTER_POLYMORPHIC_RELATION(Nightbird::SceneObject, Nightbird::PrefabInstance)

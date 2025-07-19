@@ -9,12 +9,6 @@
 
 namespace Nightbird
 {
-	PointLight::PointLight(const std::string& name)
-		: SceneObject(name)
-	{
-
-	}
-
 	PointLight::~PointLight()
 	{
 
@@ -28,4 +22,18 @@ namespace Nightbird
 
 		return data;
 	}
+}
+
+RTTR_REGISTRATION
+{
+	rttr::registration::class_<Nightbird::PointLight>("PointLight")
+	.constructor<std::string>()
+	.property("Radius", &Nightbird::PointLight::radius)
+	.property("Intensity", &Nightbird::PointLight::intensity)
+	.property("Color", &Nightbird::PointLight::color);
+
+	rttr::registration::method("CreatePointLight", [](const std::string& name) -> Nightbird::SceneObject*
+	{
+		return new Nightbird::PointLight(name);
+	});
 }

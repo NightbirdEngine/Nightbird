@@ -5,8 +5,6 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
-#include <Serialization/GlmSerialization.h>
-
 namespace Nightbird
 {
 	class SceneObject;
@@ -20,17 +18,6 @@ namespace Nightbird
 		
 		glm::mat4 GetLocalMatrix() const;
 		
-		template <class Archive>
-		void serialize(Archive& archive)
-		{
-			archive
-			(
-				CEREAL_NVP(position),
-				CEREAL_NVP(rotation),
-				CEREAL_NVP(scale)
-			);
-		}
-
 		glm::vec3 position;
 		glm::quat rotation;
 		glm::vec3 scale;

@@ -6,6 +6,8 @@ project "Project"
 	targetdir ("%{wks.location}/out/bin/" .. outputdir .. "/%{prj.name}")
 	objdir ("%{wks.location}/out/obj/" .. outputdir .. "/%{prj.name}")
 
+	defines { "PROJECT_BUILD" }
+
 	files {
 		"Source/**.h",
 		"Source/**.cpp"
@@ -21,7 +23,12 @@ project "Project"
 		"%{wks.location}/Engine/Vendor/glm",
 		"%{wks.location}/Engine/Vendor/stb",
 		"%{wks.location}/Engine/Vendor/fastgltf/include",
-		"%{wks.location}/Engine/Vendor/cereal"
+		"%{wks.location}/Engine/Vendor/rttr/src",
+		"%{wks.location}/Engine/Vendor/json"
 	}
 
 	links { "Engine" }
+
+	filter { "system:windows" }
+		links { "rttr" }
+	filter {}

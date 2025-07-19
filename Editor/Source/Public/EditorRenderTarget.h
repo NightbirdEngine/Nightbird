@@ -1,7 +1,6 @@
 #pragma once
 
 #include <Core/RenderTarget.h>
-#include <Core/ProjectExport.h>
 
 #include <ImGuiOverlay.h>
 
@@ -17,8 +16,6 @@ namespace Nightbird
 	public:
 		EditorRenderTarget(Renderer* renderer, VulkanInstance* instance, VulkanDevice* device, VulkanSwapChain* swapChain, VulkanRenderPass* renderPass, GLFWwindow* glfwWindow, Scene* scene, ModelManager* modelManager);
 		virtual ~EditorRenderTarget();
-
-		void SetObjectTypes(const std::vector<const CustomObjectDescriptor*>& objectTypes);
 		
 		void Render(Scene* scene, VulkanRenderPass* renderPass, VkCommandBuffer commandBuffer, VkFramebuffer framebuffer, VkExtent2D extent) override;
 

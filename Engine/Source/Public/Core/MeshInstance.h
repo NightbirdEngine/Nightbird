@@ -19,7 +19,7 @@ namespace Nightbird
 	{
 	public:
 		MeshInstance(const std::string& name, std::shared_ptr<Mesh> mesh, VulkanDevice* device, VkDescriptorPool descriptorPool);
-		~MeshInstance();
+		~MeshInstance() override;
 
 		std::shared_ptr<const Mesh> GetMesh() const;
 		const std::vector<VkDescriptorSet>& GetUniformDescriptorSets() const;

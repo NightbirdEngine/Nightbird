@@ -1,6 +1,7 @@
 #include <CreateObjectWindow.h>
 
 #include <array>
+#include <iostream>
 
 #include <Core/Scene.h>
 #include <Core/Transform.h>
@@ -13,37 +14,36 @@ namespace Nightbird
 	{
 
 	}
-
-	void CreateObjectWindow::SetObjectTypes(const std::vector<const CustomObjectDescriptor*>& objectTypes)
-	{
-		m_ObjectTypes = objectTypes;
-	}
-
+	
 	void CreateObjectWindow::OnRender()
 	{
-		//const std::array<const std::string, 4> objectTypes = {"Empty Scene Object", "Mesh Instance", "Point Light", "Camera"};
-		static std::vector<std::string> objectTypes;
+		static std::vector<std::string> objectTypeNames;
+		static std::vector<rttr::type> objectTypes;
 		static bool objectTypesDirty = true;
 
 		if (objectTypesDirty)
 		{
+			objectTypeNames.clear();
 			objectTypes.clear();
 
-			objectTypes.push_back("Empty Scene Object");
-			objectTypes.push_back("Mesh Instance");
-			objectTypes.push_back("Point Light");
-			objectTypes.push_back("Camera");
-
-			for (const auto& objectType : m_ObjectTypes)
+			for (auto& type : rttr::type::get_types())
 			{
-				objectTypes.push_back(objectType->name);
+				if (type.is_derived_from(rttr::type::get<Nightbird::SceneObject>()))
+				{
+					auto constructor = type.get_constructor({rttr::type::get<std::string>()});
+					if (constructor.is_valid())
+					{
+						objectTypeNames.push_back(type.get_name().to_string());
+						objectTypes.push_back(type);
+					}
+				}
 			}
-
+			
 			objectTypesDirty = false;
 		}
 
-		static int selectedObjectType = -1;
-
+		static size_t selected = static_cast<size_t>(-1);
+		
 		ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(ImGui::GetStyle().ItemSpacing.x, 15.0f));
 
 		ImGui::Text("Create an empty scene object.");
@@ -51,10 +51,10 @@ namespace Nightbird
 		ImGui::PopStyleVar(); // Pop spacing
 
 		ImGui::PushStyleVar(ImGuiStyleVar_SelectableTextAlign, ImVec2(0.0f, 0.5f));
-		for (int i = 0; i < objectTypes.size(); ++i)
+		for (int i = 0; i < objectTypeNames.size(); ++i)
 		{
-			if (ImGui::Selectable(objectTypes[i].c_str(), selectedObjectType == i, 0, ImVec2(0.0f, 30.0f)))
-				selectedObjectType = i;
+			if (ImGui::Selectable(objectTypeNames[i].c_str(), selected == i, 0, ImVec2(0.0f, 30.0f)))
+				selected = i;
 		}
 		ImGui::PopStyleVar(); // Pop selectable text align
 
@@ -62,45 +62,27 @@ namespace Nightbird
 
 		ImGui::Dummy(ImVec2(0.0f, 0.0f));
 
-		ImGui::BeginDisabled(selectedObjectType == -1);
+		ImGui::BeginDisabled(selected == -1);
 		if (ImGui::Button("Create"))
 		{
-			Transform transform;
-
-			if (selectedObjectType < 4)
+			if (selected >= 0 && selected < objectTypes.size())
 			{
-				switch (selectedObjectType)
+				rttr::type selectedType = objectTypes[selected];
+				auto create = rttr::type::get_global_method("Create" + selectedType.get_name().to_string());
+				if (create.is_valid())
 				{
-				case 0:
-					m_Scene->CreateSceneObject("Empty Scene Object", transform.position, transform.rotation, transform.scale, nullptr);
-					break;
-				case 1:
-					break;
-				case 2:
-					m_Scene->CreatePointLight("Point Light", transform.position, transform.rotation, transform.scale, nullptr);
-					break;
-				case 3:
-					Camera * camera = m_Scene->CreateCamera("Camera", transform.position, transform.rotation, transform.scale, nullptr);
-					break;
-				}
-			}
-			else
-			{
-				int customIndex = selectedObjectType - 4;
-				if (customIndex >= 0 && customIndex < static_cast<int>(m_ObjectTypes.size()))
-				{
-					auto* objectDesc = m_ObjectTypes[customIndex];
-					SceneObject* rawObject = objectDesc->create("Custom Object");
-					if (rawObject)
+					rttr::variant variant = create.invoke({}, selectedType.get_name().to_string());
+					if (variant.is_type<Nightbird::SceneObject*>())
 					{
-						std::unique_ptr<SceneObject, SceneObjectDeleter> customObject(rawObject);
-						m_Scene->AddSceneObject(std::move(customObject));
+						SceneObject* rawObject = variant.get_value<Nightbird::SceneObject*>();
+						std::unique_ptr<Nightbird::SceneObject> object(rawObject);
+						m_Scene->AddSceneObject(std::move(object));
 					}
 				}
 			}
-
+			
 			m_Open = false;
-			selectedObjectType = -1;
+			selected = static_cast<size_t>(-1);
 		}
 		ImGui::EndDisabled();
 

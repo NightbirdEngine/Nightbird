@@ -194,8 +194,7 @@ namespace Nightbird
 	void VulkanPipeline::Render(VkCommandBuffer commandBuffer, uint32_t currentFrame, const std::vector<MeshInstance*>& meshInstances, Camera* camera)
 	{
 		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
-
-		// Render opaque meshes
+		
 		for (const auto& meshInstance : meshInstances)
 		{
 			std::shared_ptr<const Mesh> mesh = meshInstance->GetMesh();

@@ -61,6 +61,8 @@ namespace Nightbird
 		std::mutex uploadQueueMutex;
 		std::queue<std::shared_ptr<Model>> uploadQueue;
 
+		std::unordered_map<std::string, LoadCallback> pendingCallbacks;
+
 		std::shared_ptr<VulkanTexture> fallbackTexture;
 
 		void LoadTextures(std::shared_ptr<Model>& model);

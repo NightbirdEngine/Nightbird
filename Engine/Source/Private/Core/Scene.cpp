@@ -16,16 +16,11 @@
 #include <Core/PointLightData.h>
 #include <Core/Transform.h>
 #include <Core/Model.h>
-#include <Core/ProjectExport.h>
 
 #include <filesystem>
 #include <fstream>
-#include <cereal/types/memory.hpp>
-#include <cereal/types/polymorphic.hpp>
-#include <cereal/archives/portable_binary.hpp>
-#include <cereal/types/vector.hpp>
-#include <cereal/archives/binary.hpp>
-#include <cereal/archives/json.hpp>
+
+#include <nlohmann/json.hpp>
 
 namespace Nightbird
 {
@@ -61,44 +56,25 @@ namespace Nightbird
 		}
 	}
 
-	Camera* Scene::GetMainCamera() const
+	Camera* Scene::GetMainCamera()
 	{
-		return mainCamera;
+		if (mainCamera)
+			return mainCamera;
+		else
+		{
+			std::vector<SceneObject*> objects = GetAllObjects();
+			for (SceneObject* object : objects)
+			{
+				if (Camera* camera = dynamic_cast<Camera*>(object))
+					return camera;
+			}
+			return nullptr;
+		}
 	}
 
 	void Scene::SetMainCamera(Camera* camera)
 	{
 		mainCamera = camera;
-	}
-
-	bool Scene::SaveSceneJSON(const std::string& path)
-	{
-		std::ofstream os(path);
-		if (!os.is_open())
-		{
-			std::cerr << "Failed to open scene for writing at " << path << std::endl;
-			return false;
-		}
-
-		cereal::JSONOutputArchive archive(os);
-		save(archive);
-
-		return true;
-	}
-
-	bool Scene::SaveSceneBIN(const std::string& path)
-	{
-		std::ofstream os(path, std::ios::binary);
-		if (!os.is_open())
-		{
-			std::cerr << "Failed to open scene for writing at " << path << std::endl;
-			return false;
-		}
-
-		cereal::BinaryOutputArchive archive(os);
-		save(archive);
-
-		return true;
 	}
 
 	bool Scene::LoadSceneJSON(const std::string& path)
@@ -110,9 +86,39 @@ namespace Nightbird
 			return false;
 		}
 
-		cereal::JSONInputArchive archive(is);
-		load(archive);
+		nlohmann::json json;
+		is >> json;
+		rootObject->Deserialize(json);
 
+		std::vector<SceneObject*> allObjects = GetAllObjects();
+		for (SceneObject* object : allObjects)
+		{
+			if (auto* prefab = dynamic_cast<PrefabInstance*>(object))
+			{
+				modelManager->LoadModelAsync(prefab->GetPrefabPath(), [this, prefab](std::shared_ptr<Model> model)
+					{
+						InstantiateModel(prefab);
+					});
+			}
+		}
+
+		return true;
+	}
+	
+	bool Scene::SaveSceneJSON(const std::string& path) const
+	{
+		nlohmann::json json;
+		rootObject->Serialize(json);
+		
+		std::ofstream os(path);
+		if (!os.is_open())
+		{
+			std::cerr << "Failed to open scene for writing at " << path << std::endl;
+			return false;
+		}
+		
+		os << json.dump(4);
+		
 		return true;
 	}
 
@@ -125,13 +131,32 @@ namespace Nightbird
 			return false;
 		}
 
-		cereal::BinaryInputArchive archive(is);
-		load(archive);
+		std::vector<SceneObject*> allObjects = GetAllObjects();
+		for (SceneObject* object : allObjects)
+		{
+			if (auto* prefab = dynamic_cast<PrefabInstance*>(object))
+			{
+				modelManager->LoadModel(prefab->GetPrefabPath());
+				InstantiateModel(prefab);
+			}
+		}
 
 		return true;
 	}
 
-	void Scene::AddSceneObject(std::unique_ptr<SceneObject, SceneObjectDeleter> object, SceneObject* parent)
+	bool Scene::SaveSceneBIN(const std::string& path) const
+	{
+		std::ofstream os(path, std::ios::binary);
+		if (!os.is_open())
+		{
+			std::cerr << "Failed to open scene for writing at " << path << std::endl;
+			return false;
+		}
+		
+		return true;
+	}
+	
+	void Scene::AddSceneObject(std::unique_ptr<SceneObject> object, SceneObject* parent)
 	{
 		if (parent)
 			parent->AddChild(std::move(object));
@@ -153,7 +178,7 @@ namespace Nightbird
 		//}
 		//objectNames.insert(instanceName);
 
-		std::unique_ptr<SceneObject, SceneObjectDeleter> object(new SceneObject(instanceName), SceneObjectDeleter{});
+		std::unique_ptr<SceneObject> object(new SceneObject(instanceName));
 		object->transform.position = position;
 		object->transform.rotation = rotation;
 		object->transform.scale = scale;
@@ -161,78 +186,75 @@ namespace Nightbird
 
 		SceneObject* objectPtr = object.get();
 
-		if (parent)
-			parent->AddChild(std::move(object));
-		else
-			rootObject->AddChild(std::move(object));
+		AddSceneObject(std::move(object), parent);
 
 		return objectPtr;
 	}
 
-	Camera* Scene::CreateCamera(const std::string& name, const glm::vec3& position, const glm::quat& rotation, const glm::vec3& scale, SceneObject* parent)
-	{
-		if (!parent)
-			parent = rootObject.get();
+	//Camera* Scene::CreateCamera(const std::string& name, const glm::vec3& position, const glm::quat& rotation, const glm::vec3& scale, SceneObject* parent)
+	//{
+	//	if (!parent)
+	//		parent = rootObject.get();
 
-		std::string cameraName = name;
-		//int counter = 1;
-		//while (objectNames.count(cameraName))
-		//{
-			//cameraName = name + std::to_string(counter);
-			//++counter;
-		//}
-		//objectNames.insert(cameraName);
+	//	std::string cameraName = name;
+	//	//int counter = 1;
+	//	//while (objectNames.count(cameraName))
+	//	//{
+	//		//cameraName = name + std::to_string(counter);
+	//		//++counter;
+	//	//}
+	//	//objectNames.insert(cameraName);
 
-		std::unique_ptr<SceneObject, SceneObjectDeleter> object(new Camera(cameraName), SceneObjectDeleter{});
-		object->transform.position = position;
-		object->transform.rotation = rotation;
-		object->transform.scale = scale;
-		object->SetParent(parent);
+	//	std::unique_ptr<SceneObject> object(new Camera(cameraName));
+	//	object->transform.position = position;
+	//	object->transform.rotation = rotation;
+	//	object->transform.scale = scale;
+	//	object->SetParent(parent);
 
-		Camera* camera = static_cast<Camera*>(object.get());
+	//	Camera* camera = static_cast<Camera*>(object.get());
 
-		if (parent)
-			parent->AddChild(std::move(object));
-		else
-			rootObject->AddChild(std::move(object));
+	//	if (parent)
+	//		parent->AddChild(std::move(object));
+	//	else
+	//		rootObject->AddChild(std::move(object));
 
-		if (!GetMainCamera())
-		{
-			SetMainCamera(camera);
-		}
+	//	if (!GetMainCamera())
+	//	{
+	//		SetMainCamera(camera);
+	//	}
 
-		return camera;
-	}
+	//	return camera;
+	//}
 
-	PointLight* Scene::CreatePointLight(const std::string& name, const glm::vec3& position, const glm::quat& rotation, const glm::vec3& scale, SceneObject* parent)
-	{
-		if (!parent)
-			parent = rootObject.get();
+	//PointLight* Scene::CreatePointLight(const std::string& name, const glm::vec3& position, const glm::quat& rotation, const glm::vec3& scale, SceneObject* parent)
+	//{
+	//	if (!parent)
+	//		parent = rootObject.get();
 
-		std::string lightName = name;
-		//int counter = 1;
-		//while (objectNames.count(lightName))
-		//{
-			//lightName = name + std::to_string(counter);
-			//++counter;
-		//}
-		//objectNames.insert(lightName);
+	//	std::string lightName = name;
+	//	//int counter = 1;
+	//	//while (objectNames.count(lightName))
+	//	//{
+	//		//lightName = name + std::to_string(counter);
+	//		//++counter;
+	//	//}
+	//	//objectNames.insert(lightName);
 
-		std::unique_ptr<SceneObject, SceneObjectDeleter> object(new PointLight(lightName), SceneObjectDeleter{});
-		object->transform.position = position;
-		object->transform.rotation = rotation;
-		object->transform.scale = scale;
-		object->SetParent(parent);
+	//	std::unique_ptr<SceneObject> object(new PointLight(lightName));
+	//	object->transform.position = position;
+	//	object->transform.rotation = rotation;
+	//	object->transform.scale = scale;
+	//	object->SetParent(parent);
 
-		PointLight* light = static_cast<PointLight*>(object.get());
+	//	PointLight* light = static_cast<PointLight*>(object.get());
 
-		if (parent)
-			parent->AddChild(std::move(object));
-		else
-			rootObject->AddChild(std::move(object));
+	//	if (parent)
+	//		parent->AddChild(std::move(object));
+	//	else
+	//		rootObject->AddChild(std::move(object));
 
-		return light;
-	}
+	//	return light;
+	//}
 
 	PrefabInstance* Scene::CreatePrefabInstance(const std::string& name, const std::string& path, const glm::vec3& position, const glm::quat& rotation, const glm::vec3& scale, SceneObject* parent)
 	{
@@ -248,7 +270,7 @@ namespace Nightbird
 		//}
 		//objectNames.insert(instanceName);
 
-		std::unique_ptr<SceneObject, SceneObjectDeleter> object(new PrefabInstance(instanceName, path), SceneObjectDeleter{});
+		std::unique_ptr<SceneObject> object(new PrefabInstance(instanceName, path));
 		object->transform.position = position;
 		object->transform.rotation = rotation;
 		object->transform.scale = scale;
@@ -256,10 +278,7 @@ namespace Nightbird
 
 		PrefabInstance* prefab = static_cast<PrefabInstance*>(object.get());
 
-		if (parent)
-			parent->AddChild(std::move(object));
-		else
-			rootObject->AddChild(std::move(object));
+		AddSceneObject(std::move(object));
 
 		return prefab;
 	}
@@ -278,7 +297,7 @@ namespace Nightbird
 		//}
 		//objectNames.insert(instanceName);
 
-		std::unique_ptr<SceneObject, SceneObjectDeleter> object(new MeshInstance(instanceName, mesh, device, descriptorPool));
+		std::unique_ptr<SceneObject> object(new MeshInstance(instanceName, mesh, device, descriptorPool));
 		object->transform.position = position;
 		object->transform.rotation = rotation;
 		object->transform.scale = scale;

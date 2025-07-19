@@ -2,6 +2,9 @@
 
 #include <ImGuiWindow.h>
 
+#include <rttr/type.h>
+#include <rttr/registration.h>
+
 namespace Nightbird
 {
 	class VulkanImGuiOverlay;
@@ -15,6 +18,8 @@ namespace Nightbird
 
 	protected:
 		void OnRender() override;
+		
+		void RenderProperties(rttr::instance instance);
 		
 		Scene* m_Scene = nullptr;
 		VulkanImGuiOverlay* m_Overlay = nullptr;

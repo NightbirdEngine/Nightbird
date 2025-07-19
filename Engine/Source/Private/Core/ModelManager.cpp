@@ -55,10 +55,9 @@ namespace Nightbird
 				if (model)
 				{
 					std::lock_guard<std::mutex> lock(uploadQueueMutex);
+					pendingCallbacks[model->path] = callback;
 					uploadQueue.push(model);
 				}
-				if (callback)
-					callback(model);
 				return model;
 			});
 	}
@@ -69,7 +68,8 @@ namespace Nightbird
 
 		if (std::this_thread::get_id() != mainThreadId)
 		{
-			std::cerr << "Wrong thread!!!" << std::endl;
+			std::cerr << "Model upload attempted on wrong thread" << std::endl;
+			return;
 		}
 
 		std::lock_guard<std::mutex> lock(uploadQueueMutex);
@@ -77,8 +77,17 @@ namespace Nightbird
 		{
 			auto model = uploadQueue.front();
 			uploadQueue.pop();
+
 			UploadModel(model);
 			models[model->path] = model;
+
+			auto it = pendingCallbacks.find(model->path);
+			if (it != pendingCallbacks.end())
+			{
+				if (it->second)
+					it->second(model);
+				pendingCallbacks.erase(it);
+			}
 		}
 	}
 

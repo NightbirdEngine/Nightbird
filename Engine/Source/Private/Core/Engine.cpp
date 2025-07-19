@@ -20,6 +20,7 @@
 #include <Vulkan/DescriptorPool.h>
 #include <Vulkan/DescriptorSetLayoutManager.h>
 #include <Vulkan/GlobalDescriptorSetManager.h>
+#include <Core/GlmRegistration.h>
 
 inline float Wrap180(float angle)
 {
@@ -49,6 +50,8 @@ namespace Nightbird
 {
 	Engine::Engine()
 	{
+		GlmRegistration();
+
 		if (volkInitialize() != VK_SUCCESS)
 		{
 			std::cerr << "Failed to initialize Volk" << std::endl;

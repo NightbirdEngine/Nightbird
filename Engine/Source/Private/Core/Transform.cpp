@@ -1,5 +1,9 @@
 #include <Core/Transform.h>
 
+#include <iostream>
+
+#include <rttr/registration.h>
+
 namespace Nightbird
 {
 	Transform::Transform()
@@ -26,4 +30,15 @@ namespace Nightbird
 		glm::mat4 s = glm::scale(glm::mat4(1.0f), scale);
 		return t * r * s;
 	}
+}
+
+RTTR_REGISTRATION
+{
+	using namespace Nightbird;
+
+	rttr::registration::class_<Transform>("Transform")
+	.constructor<>()
+	.property("Position", &Transform::position)
+	.property("Rotation", &Transform::rotation)
+	.property("Scale", &Transform::scale);
 }

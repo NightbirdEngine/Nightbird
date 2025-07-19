@@ -6,28 +6,22 @@
 
 #include <Core/Transform.h>
 
-#include <cereal/cereal.hpp>
+#include <nlohmann/json.hpp>
 
-#include <cereal/types/string.hpp>
-#include <cereal/types/memory.hpp>
-#include <cereal/types/vector.hpp>
+#include <rttr/type>
+#include <rttr/registration.h>
+#include <rttr/registration_friend.h>
 
-#include <cereal/types/polymorphic.hpp>
-#include <cereal/archives/portable_binary.hpp>
+using json = nlohmann::json;
 
 namespace Nightbird
 {
-	struct SceneObjectDeleter
-	{
-		void operator()(SceneObject* object) const;
-	};
-
 	class SceneObject
 	{
 	public:
-		SceneObject() = default;
+		SceneObject(const char* name);
 		SceneObject(const std::string& name);
-		virtual ~SceneObject();
+		virtual ~SceneObject() = default;
 
 		const std::string& GetName() const;
 		std::string GetPath() const;
@@ -35,36 +29,30 @@ namespace Nightbird
 		void SetParent(SceneObject* transform);
 		SceneObject* GetParent() const;
 		
-		const std::vector<std::unique_ptr<SceneObject, SceneObjectDeleter>>& GetChildren() const;
+		const std::vector<std::unique_ptr<SceneObject>>& GetChildren() const;
 
 		glm::mat4 GetLocalMatrix() const;
 		glm::mat4 GetWorldMatrix() const;
 
-		void AddChild(std::unique_ptr<SceneObject, SceneObjectDeleter> child);
-		std::unique_ptr<SceneObject, SceneObjectDeleter> DetachChild(SceneObject* child);
-
-		template <class Archive>
-		void serialize(Archive& archive)
-		{
-			archive
-			(
-				CEREAL_NVP(name),
-				CEREAL_NVP(transform),
-				CEREAL_NVP(children)
-			);
-		}
+		void AddChild(std::unique_ptr<SceneObject> child);
+		std::unique_ptr<SceneObject> DetachChild(SceneObject* child);
+		
+		virtual void Serialize(json& out) const;
+		virtual void Deserialize(const json& in);
 		
 		Transform transform;
 
 		SceneObject* parent = nullptr;
-
-		virtual bool IsCustomObject() const { return false; }
+		
+		RTTR_ENABLE()
+		RTTR_REGISTRATION_FRIEND
 
 	protected:
 		std::string name;
 		
-		std::vector<std::unique_ptr<SceneObject, SceneObjectDeleter>> children;
+		std::vector<std::unique_ptr<SceneObject>> children;
+
+		void SerializeBase(json& out) const;
+		void DeserializeBase(const json& out);
 	};
 }
-
-CEREAL_REGISTER_TYPE(Nightbird::SceneObject)

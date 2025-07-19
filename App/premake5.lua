@@ -1,3 +1,5 @@
+dofile("../rttr_copy.lua")
+
 project "App"
 	kind "ConsoleApp"
 	language "C++"
@@ -29,7 +31,15 @@ project "App"
 		"%{wks.location}/Engine/Vendor/glm",
 		"%{wks.location}/Engine/Vendor/stb",
 		"%{wks.location}/Engine/Vendor/fastgltf/include",
-		"%{wks.location}/Engine/Vendor/cereal"
+		"%{wks.location}/Engine/Vendor/rttr/src",
+		"%{wks.location}/Engine/Vendor/json"
 	}
 
 	links { "Engine" }
+
+	filter { "system:windows" }
+		links { "rttr" }
+		copy_rttr("windows", outputdir)
+	filter { "system:linux" }
+		copy_rttr("linux", outputdir)
+	filter {}

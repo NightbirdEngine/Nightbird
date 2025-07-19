@@ -15,11 +15,6 @@
 #include <fastgltf/types.hpp>
 #include <fastgltf/tools.hpp>
 
-#include <cereal/cereal.hpp>
-
-#include <cereal/types/string.hpp>
-#include <cereal/types/memory.hpp>
-
 #include <Core/SceneObject.h>
 
 namespace Nightbird
@@ -46,20 +41,18 @@ namespace Nightbird
 		const SceneObject* GetRootObject() const;
 		std::vector<SceneObject*> GetAllObjects();
 		
-		Camera* GetMainCamera() const;
+		Camera* GetMainCamera();
 		void SetMainCamera(Camera* camera);
-
-		bool SaveSceneJSON(const std::string& path);
-		bool SaveSceneBIN(const std::string& path);
-
+		
 		bool LoadSceneJSON(const std::string& path);
-		bool LoadSceneBIN(const std::string& path);
+		bool SaveSceneJSON(const std::string& path) const;
 
-		void AddSceneObject(std::unique_ptr<SceneObject, SceneObjectDeleter> object, SceneObject* parent = nullptr);
+		bool LoadSceneBIN(const std::string& path);
+		bool SaveSceneBIN(const std::string& path) const;
+		
+		void AddSceneObject(std::unique_ptr<SceneObject> object, SceneObject* parent = nullptr);
 
 		SceneObject* CreateSceneObject(const std::string& name, const glm::vec3& position, const glm::quat& rotation, const glm::vec3& scale, SceneObject* parent = nullptr);
-		Camera* CreateCamera(const std::string& name, const glm::vec3& position, const glm::quat& rotation, const glm::vec3& scale, SceneObject* parent = nullptr);
-		PointLight* CreatePointLight(const std::string& name, const glm::vec3& position, const glm::quat& rotation, const glm::vec3& scale, SceneObject* parent = nullptr);
 		
 		void InstantiateModel(PrefabInstance* prefabInstance);
 		PrefabInstance* InstantiateModel(const std::string& path, const Transform& transform);
@@ -68,38 +61,30 @@ namespace Nightbird
 
 		void UpdateBuffers(int currentFrame, VkExtent2D swapChainExtent);
 		void UpdateBuffersRecursive(int currentFrame, VkExtent2D swapChainExtent, SceneObject* object, std::vector<PointLightData>& pointLightData);
+		
+		//template <class Archive>
+		//void load(Archive& archive)
+		//{
+		//	rootObject = nullptr;
+		//	mainCamera = nullptr;
 
-		template <class Archive>
-		void save(Archive& archive) const
-		{
-			archive(CEREAL_NVP(rootObject));
-			std::string mainCameraPath = mainCamera ? mainCamera->GetPath() : "";
-			archive(CEREAL_NVP(mainCameraPath));
-		}
+		//	archive(CEREAL_NVP(rootObject));
+		//	std::string mainCameraPath;
+		//	archive(CEREAL_NVP(mainCameraPath));
+		//	
+		//	if (!mainCameraPath.empty())
+		//		mainCamera = dynamic_cast<Camera*>(FindObject(mainCameraPath));
 
-		template <class Archive>
-		void load(Archive& archive)
-		{
-			rootObject = nullptr;
-			mainCamera = nullptr;
-
-			archive(CEREAL_NVP(rootObject));
-			std::string mainCameraPath;
-			archive(CEREAL_NVP(mainCameraPath));
-			
-			if (!mainCameraPath.empty())
-				mainCamera = dynamic_cast<Camera*>(FindObject(mainCameraPath));
-
-			std::vector<SceneObject*> allObjects = GetAllObjects();
-			for (SceneObject* object : allObjects)
-			{
-				if (auto* prefab = dynamic_cast<PrefabInstance*>(object))
-				{
-					modelManager->LoadModel(prefab->GetPrefabPath());
-					InstantiateModel(prefab);
-				}
-			}
-		}
+		//	std::vector<SceneObject*> allObjects = GetAllObjects();
+		//	for (SceneObject* object : allObjects)
+		//	{
+		//		if (auto* prefab = dynamic_cast<PrefabInstance*>(object))
+		//		{
+		//			modelManager->LoadModel(prefab->GetPrefabPath());
+		//			InstantiateModel(prefab);
+		//		}
+		//	}
+		//}
 
 	private:
 		VulkanDevice* device;
